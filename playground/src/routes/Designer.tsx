@@ -23,7 +23,17 @@ function DesignerApp() {
 
   const [editingStaticSchemas, setEditingStaticSchemas] = useState(false);
   const [originalTemplate, setOriginalTemplate] = useState<Template | null>(null);
+
+  // O estado do React para o zoom.
   const [zoom, setZoom] = useState(1.0);
+  // O ref para armazenar o valor do zoom de forma síncrona para os event listeners.
+  const zoomRef = useRef(zoom);
+
+  // Sincroniza o ref sempre que o estado do zoom for alterado.
+  // Isso garante que o ref tenha o valor mais recente.
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
 
   const buildDesigner = useCallback(async () => {
     if (!designerRef.current) return;
@@ -63,7 +73,8 @@ function DesignerApp() {
             multiVariableText:
               '<svg fill="#000000" width="24px" height="24px" viewBox="0 0 24 24"><path d="M6.643,13.072,17.414,2.3a1.027,1.027,0,0,1,1.452,0L20.7,4.134a1.027,1.027,0,0,1,0,1.452L9.928,16.357,5,18ZM21,20H3a1,1,0,0,0,0,2H21a1,1,0,0,0,0-2Z"/></svg>',
           },
-          maxZoom: 10,
+          maxZoom: 1000,
+          zoomLevel: 2
         },
         plugins: getPlugins(),
       });
@@ -178,25 +189,53 @@ function DesignerApp() {
     };
   }, [designerRef, buildDesigner]);
 
+  // Lógica de zoom ajustada para robustez
   useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        // Usa o valor do ref para o cálculo, garantindo que seja sempre o mais recente.
+        let newZoom = zoomRef.current;
+        let zoomChanged = false;
 
-        const newZoom = zoom - e.deltaY * 0.01;
-        const clampedZoom = Math.max(0.1, Math.min(newZoom, 10));
+        switch (event.key) {
+          case '=':
+          case '+':
+            event.preventDefault();
+            newZoom = zoomRef.current + 0.1;
+            zoomChanged = true;
+            break;
+          case '-':
+            event.preventDefault();
+            newZoom = zoomRef.current - 0.1;
+            zoomChanged = true;
+            break;
+          case '0':
+            event.preventDefault();
+            newZoom = 1.0;
+            zoomChanged = true;
+            break;
+          default:
+            break;
+        }
 
-        setZoom(clampedZoom);
-        designer.current?.updateOptions({ zoom: clampedZoom });
+        if (zoomChanged && designer.current) {
+          const clampedZoom = Math.max(0.2, Math.min(newZoom, 10));
+          designer.current.updateOptions({ zoomLevel: clampedZoom });
+          setZoom(clampedZoom);
+
+          console.log(clampedZoom)
+        }
       }
     };
 
-    window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('keydown', handleKeyDown);
 
+    // A dependência pode ser vazia, pois a lógica agora se baseia no ref,
+    // que não causa re-renderizações e está sempre atualizado.
     return () => {
-      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [zoom]);
+  }, []);
 
   const navItems: NavItem[] = [
     {

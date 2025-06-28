@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { Size } from '@pdfme/common';
 // Import icons from lucide-react
 // Note: In tests, these will be mocked by the mock file in __mocks__/lucide-react.js
@@ -25,6 +25,10 @@ const Zoom = ({ zoomLevel, setZoomLevel, style }: ZoomProps) => {
 
   const nextZoomOut = zoomLevel - zoomStep;
   const nextZoomIn = zoomLevel + zoomStep;
+
+  useEffect(() => {
+    console.log({ nextZoomIn, nextZoomOut })
+  }, [nextZoomIn, nextZoomOut])
 
   return (
     <div style={{ display: 'flex', alignItems: 'center' }}>
